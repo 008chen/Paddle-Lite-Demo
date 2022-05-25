@@ -44,7 +44,7 @@ public class MainActivity extends Activity implements View.OnClickListener, Came
     protected String clsModelPath = "ch_ppocr_mobile_v2.0_cls_slim_opt.nb";
     protected String labelPath = "ppocr_keys_v1.txt";
     protected String configPath = "config.txt";
-    protected int cpuThreadNum = 1;
+    protected int cpuThreadNum = 4;
     protected String cpuPowerMode = "LITE_POWER_HIGH";
 
 

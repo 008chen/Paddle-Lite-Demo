@@ -43,8 +43,8 @@ private:
                                        cv::Mat *rgbaImage,
                                        double *readGLFBOTime) {
     auto t = GetCurrentTime();
-    rgbaImage->create(textureHeight, textureWidth, CV_8UC4);
-    glReadPixels(0, 0, textureWidth, textureHeight, GL_RGBA, GL_UNSIGNED_BYTE,
+    rgbaImage->create(textureHeight-200, textureWidth-200, CV_8UC4);
+    glReadPixels(100, 100, textureWidth-200, textureHeight-200, GL_RGBA, GL_UNSIGNED_BYTE,
                  rgbaImage->data);
     *readGLFBOTime = GetElapsedTime(t);
     LOGD("Read from FBO texture costs %f ms", *readGLFBOTime);
