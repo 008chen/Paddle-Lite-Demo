@@ -58,10 +58,13 @@ cv::Mat DetResizeImg(const cv::Mat img, int max_size_len,
 
 DetPredictor::DetPredictor(const std::string &modelDir, const int cpuThreadNum,
                            const std::string &cpuPowerMode) {
+  // 1. 设置 MobileConfig
   paddle::lite_api::MobileConfig config;
-  config.set_model_from_file(modelDir);
-  config.set_threads(cpuThreadNum);
-  config.set_power_mode(ParsePowerMode(cpuPowerMode));
+  config.set_model_from_file(modelDir);// 设置 NaiveBuffer 格式模型路径
+  config.set_threads(cpuThreadNum); // 设置工作线程数
+  config.set_power_mode(ParsePowerMode(cpuPowerMode)); // 设置 CPU 运行模式
+
+  // 2. 创建 PaddlePredictor
   predictor_ =
       paddle::lite_api::CreatePaddlePredictor<paddle::lite_api::MobileConfig>(
           config);
@@ -73,6 +76,7 @@ void DetPredictor::Preprocess(const cv::Mat &srcimg, const int max_side_len) {
   img.convertTo(img_fp, CV_32FC3, 1.0 / 255.f);
 
   // Prepare input data from image
+  // 3. 设置输入数据
   std::unique_ptr<Tensor> input_tensor0(std::move(predictor_->GetInput(0)));
   input_tensor0->Resize({1, 3, img_fp.rows, img_fp.cols});
   auto *data0 = input_tensor0->mutable_data<float>();
@@ -89,8 +93,8 @@ DetPredictor::Postprocess(const cv::Mat srcimg,
                           std::map<std::string, double> Config,
                           int det_db_use_dilate) {
   // Get output and post process
-  std::unique_ptr<const Tensor> output_tensor(
-      std::move(predictor_->GetOutput(0)));
+  // 5. 获取输出数据
+  std::unique_ptr<const Tensor> output_tensor(std::move(predictor_->GetOutput(0)));
   auto *outptr = output_tensor->data<float>();
   auto shape_out = output_tensor->shape();
 
@@ -145,6 +149,7 @@ DetPredictor::Predict(cv::Mat &img, std::map<std::string, double> Config,
 
   // t = GetCurrentTime();
   // Run predictor
+  // 4. 执行预测
   predictor_->Run();
   // *predictTime = GetElapsedTime(t);
 

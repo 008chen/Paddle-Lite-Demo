@@ -14,6 +14,7 @@
 
 #include "pipeline.h"
 #include <iostream>
+#include "text_box.h"
 
 cv::Mat GetRotateCropImage(cv::Mat srcimage,
                            std::vector <std::vector<int>> box) {
@@ -122,55 +123,53 @@ std::map<std::string, double> LoadConfigTxt(std::string config_path) {
 }
 
 cv::Mat Visualization(cv::Mat srcimg,
-                      std::vector <std::vector<std::vector < int>>> boxes,
-std::string output_image_path
-) {
-    cv::Point rook_points[boxes.size()][4];
-    for (
-    int n = 0;
-    n<boxes.
-
-    size();
-
-    n++) {
-    for (
-    int m = 0;
-    m<boxes[0].
-
-    size();
-
-    m++) {
-    rook_points[n][m] = cv::Point(static_cast
-    <int>(boxes[n][m][0]),
-    static_cast
-    <int>(boxes[n][m][1])
-    );
-    }
+                      std::vector <TextBox> textBoxs,std::string output_image_path) {
+    cv::Point rook_points[textBoxs.size()][4];
+    for (int n = 0;n<textBoxs.size();n++) {
+        auto boxes = textBoxs[n].box;
+        for (int m = 0;m<boxes.size();m++) {
+            rook_points[n][m] = cv::Point(static_cast<int>(boxes[m][0]),static_cast<int>(boxes[m][1]));
+        }
     }
     cv::Mat img_vis;
-    srcimg.
-    copyTo(img_vis);
-    for (
-    int n = 0;
-    n<boxes.
+    srcimg.copyTo(img_vis);
+    for (int n = 0;n<textBoxs.size();n++) {
+        const cv::Point *ppt[1] = {rook_points[n]};
+        int npt[] = {4};
+        cv::polylines(img_vis, ppt, npt,1, 1, CV_RGB(0, 255, 0), 2, 8, 0);
 
-    size();
+        int font_face = cv::FONT_HERSHEY_COMPLEX;
+        double font_scale = 1;
+        int thickness = 2;
 
-    n++) {
-    const cv::Point *ppt[1] = {rook_points[n]};
-    int npt[] = {4};
-    cv::polylines(img_vis, ppt, npt,
-    1, 1, CV_RGB(0, 255, 0), 2, 8, 0);
+        cv::putText(img_vis, textBoxs[n].xtext, rook_points[n][0], font_face, font_scale, cv::Scalar(0, 255, 255), thickness, 8, 0);
     }
     cv::Mat img_vis_bgr;
-    cv::cvtColor(img_vis, img_vis_bgr, cv::COLOR_RGBA2BGR
-    );
-    cv::imwrite(output_image_path, img_vis_bgr
-    );
-    return
-    img_vis;
+    cv::cvtColor(img_vis, img_vis_bgr, cv::COLOR_RGBA2BGR);
+    cv::imwrite(output_image_path, img_vis_bgr);
+    return img_vis;
 }
 
+//cv::Mat Visualization(cv::Mat srcimg,
+//                      std::vector <std::vector<std::vector < int>>> boxes,std::string output_image_path) {
+//    cv::Point rook_points[boxes.size()][4];
+//    for (int n = 0;n<boxes.size();n++) {
+//        for (int m = 0;m<boxes[0].size();m++) {
+//        rook_points[n][m] = cv::Point(static_cast<int>(boxes[n][m][0]),static_cast<int>(boxes[n][m][1]));
+//        }
+//    }
+//    cv::Mat img_vis;
+//    srcimg.copyTo(img_vis);
+//    for (int n = 0;n<boxes.size();n++) {
+//        const cv::Point *ppt[1] = {rook_points[n]};
+//        int npt[] = {4};
+//        cv::polylines(img_vis, ppt, npt,1, 1, CV_RGB(0, 255, 0), 2, 8, 0);
+//    }
+//    cv::Mat img_vis_bgr;
+//    cv::cvtColor(img_vis, img_vis_bgr, cv::COLOR_RGBA2BGR);
+//    cv::imwrite(output_image_path, img_vis_bgr);
+//    return img_vis;
+//}
 void Pipeline::VisualizeResults(std::vector <std::string> rec_text,
                                 std::vector<float> rec_text_score,
                                 cv::Mat *rgbaImage,
@@ -286,29 +285,31 @@ bool Pipeline::Process_val(int inTextureId, int outTextureId, int textureWidth,
     std::vector <std::string> rec_text;
     std::vector<float> rec_text_score;
     LOGD("debug===boxes: %d", boxes.size());
+    std::vector <TextBox> textBoxs;
     for (int i = boxes.size() - 1; i >= 0; i--) {
         crop_img = GetRotateCropImage(img, boxes[i]);
-        //加入判断
 //        LOGD("debug===crop_img.rows: %d", crop_img.rows);
-        if (crop_img.rows < 30 || crop_img.cols < 30)
-            continue;
-//        if (use_direction_classify >= 1) {
-//            crop_img =
-//                    clsPredictor_->Predict(crop_img, nullptr, nullptr, nullptr, 0.9);
-//        }
+
+        if (use_direction_classify >= 1) {
+            crop_img =
+                    clsPredictor_->Predict(crop_img, nullptr, nullptr, nullptr, 0.9);
+        }
         auto res = recPredictor_->Predict(crop_img, nullptr, nullptr, nullptr,
                                           charactor_dict_);
-        rec_text.push_back(res.first);
-        rec_text_score.push_back(res.second);
+
+//        LOGD("debug===boxes: %s", res.first.c_str());
+//        rec_text.push_back(res.first);
+//        rec_text_score.push_back(res.second);
+        textBoxs.push_back(TextBox(boxes[i],res.first));
     }
     predictTime = GetElapsedTime(t);
     // visualization
-    auto img_res = Visualization(bgrImage_resize, boxes, savedImagePath);
+    auto img_res = Visualization(bgrImage_resize, textBoxs, savedImagePath);
     cv::Mat img_vis;
     cv::resize(img_res, img_vis, cv::Size(textureWidth, textureHeight));
     cv::cvtColor(img_vis, img_vis, cv::COLOR_BGR2RGBA);
     // show ocr results on image
-    //  VisualizeResults(rec_text, rec_text_score, &img_vis,
+//      VisualizeResults(rec_text, rec_text_score, &img_vis,
     //  &visualizeResultsTime);
     VisualizeStatus(readGLFBOTime, writeGLTextureTime, predictTime, rec_text,
                     rec_text_score, visualizeResultsTime, &img_vis);

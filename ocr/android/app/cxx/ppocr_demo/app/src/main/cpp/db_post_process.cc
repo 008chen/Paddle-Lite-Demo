@@ -115,6 +115,8 @@ std::vector<std::vector<float>> GetMiniBoxes(cv::RotatedRect box, float &ssid) {
   ssid = std::min(box.size.width, box.size.height);
 
   cv::Mat points;
+//  使用cv2.boxPoints()可获取该矩形的四个顶点坐标
+//  结果是：The rows are the 4 points and the two columns are x and y.
   cv::boxPoints(box, points);
 
   auto array = Mat2Vector(points);
@@ -238,6 +240,7 @@ float PolygonScoreAcc(std::vector<cv::Point> contour, cv::Mat pred) {
 std::vector<std::vector<std::vector<int>>>
 BoxesFromBitmap(const cv::Mat pred, const cv::Mat bitmap,
                 std::map<std::string, double> Config) {
+  // 舍弃小框
   const int min_size = 3;
   const int max_candidates = 1000;
   const float box_thresh = static_cast<float>(Config["det_db_box_thresh"]);
@@ -253,6 +256,7 @@ BoxesFromBitmap(const cv::Mat pred, const cv::Mat bitmap,
   cv::findContours(bitmap, contours, hierarchy, cv::RETR_LIST,
                    cv::CHAIN_APPROX_SIMPLE);
 
+  //轮廓数量
   int num_contours =
       contours.size() >= max_candidates ? max_candidates : contours.size();
 
@@ -262,7 +266,7 @@ BoxesFromBitmap(const cv::Mat pred, const cv::Mat bitmap,
     float ssid;
     if (contours[i].size() <= 2)
       continue;
-
+    //获取点集的最小外接矩形,返回值rect内包含该矩形的中心点坐标、高度宽度及倾斜角度等信息.
     cv::RotatedRect box = cv::minAreaRect(contours[i]);
     auto array = GetMiniBoxes(box, ssid);
 
